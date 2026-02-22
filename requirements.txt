@@ -1,0 +1,10 @@
+streamlit>=1.28.0
+plotly>=5.17.0
+pandas>=2.0.0
+numpy>=1.24.0
+yfinance>=0.2.32
+hmmlearn>=0.3.0
+scikit-learn>=1.3.0
+# TA-Lib is optional (see README.md for installation instructions)
+# Uncomment the line below if you have TA-Lib installed
+# ta-lib>=0.4.28
