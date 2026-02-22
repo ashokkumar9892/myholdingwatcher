@@ -386,7 +386,12 @@ def portfolio_page():
     
     # Initialize portfolio in session state
     if 'portfolio_tickers' not in st.session_state:
-        st.session_state.portfolio_tickers = ['AAPL', 'TSLA', 'NVDA', 'MSFT', 'AMD']
+        st.session_state.portfolio_tickers = [
+            'AAPL', 'AFJK', 'ABVX', 'AAP', 'ADMA', 'AGEN', 'CELC', 'CNC', 'CONI', 'DAVE', 
+            'FIVN', 'GLUE', 'LUMN', 'LWAY', 'MGPI', 'NNNN', 'NVCR', 'NVDL', 'OIS', 'ODD', 
+            'PEGA', 'QURE', 'RXO', 'SBUX', 'SERV', 'SOGP', 'TIL', 'TREE', 'TSLA', 'UPST', 
+            'WLDN', 'ZEPP'
+        ]
     
     # Sidebar for managing portfolio
     st.sidebar.header("Manage Portfolio")
@@ -556,9 +561,8 @@ def main():
                 'AAPL', 'AFJK',
                 'ABVX', 'AAP', 'ADMA', 'AGEN', 'CELC', 'CNC', 'CONI', 'DAVE', 'FIVN', 'GLUE',
                 'LUMN', 'LWAY', 'MGPI', 'NNNN', 'NVCR', 'NVDL','OIS', 'ODD', 'PEGA', 'QURE', 'RXO',
-                'SBUX', 'SERV', 'SOGP', 'TIL', 'TREE','TSLA', 'UPST','VNDA', 'WLDN', 'ZEPP',
-                'MSFT', 'GOOGL', 'META', 'AMZN', 'NVDA', 'AMD', 'INTC'
-            ]
+                'SBUX', 'SERV', 'SOGP', 'TIL', 'TREE','TSLA', 'UPST', 'WLDN', 'ZEPP'
+            ]  
         )
     else:
         selected_ticker = st.sidebar.text_input(
