@@ -351,15 +351,35 @@ def main():
         else:
             st.sidebar.info(f"⏱️ Refreshing now...")
     
-    selected_ticker = st.sidebar.selectbox(
-        "Select Ticker",
-        [
-            'AAPL', 'AFJK',
-            'ABVX', 'AAP', 'ADMA', 'AGEN', 'CELC', 'CNC', 'CONI', 'DAVE', 'FIVN', 'GLUE',
-            'LUMN', 'LWAY', 'MGPI', 'NNNN', 'NVCR', 'NVDL','OIS', 'ODD', 'PEGA', 'QURE', 'RXO',
-            'SBUX', 'SERV', 'SOGP', 'TIL', 'TREE','TSLA', 'UPST','VNDA', 'WLDN', 'ZEPP'
-        ]
+    # Ticker selection with custom input option
+    ticker_input_method = st.sidebar.radio(
+        "Ticker Selection",
+        ["📋 Select from list", "✍️ Enter custom"],
+        horizontal=True
     )
+    
+    if ticker_input_method == "📋 Select from list":
+        selected_ticker = st.sidebar.selectbox(
+            "Select Ticker",
+            [
+                'AAPL', 'AFJK',
+                'ABVX', 'AAP', 'ADMA', 'AGEN', 'CELC', 'CNC', 'CONI', 'DAVE', 'FIVN', 'GLUE',
+                'LUMN', 'LWAY', 'MGPI', 'NNNN', 'NVCR', 'NVDL','OIS', 'ODD', 'PEGA', 'QURE', 'RXO',
+                'SBUX', 'SERV', 'SOGP', 'TIL', 'TREE','TSLA', 'UPST','VNDA', 'WLDN', 'ZEPP',
+                'MSFT', 'GOOGL', 'META', 'AMZN', 'NVDA', 'AMD', 'INTC'
+            ]
+        )
+    else:
+        selected_ticker = st.sidebar.text_input(
+            "Enter Ticker Symbol",
+            value="AAPL",
+            help="Enter any valid stock ticker symbol (e.g., AAPL, TSLA, MSFT)",
+            max_chars=10
+        ).upper().strip()
+        
+        if not selected_ticker:
+            st.sidebar.warning("⚠️ Please enter a ticker symbol")
+            return
     
     days_history = st.sidebar.slider(
         "Historical Data (days)",
