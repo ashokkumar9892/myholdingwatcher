@@ -456,9 +456,19 @@ def portfolio_page():
     if 'portfolio_data' in st.session_state and st.session_state.portfolio_data:
         df_portfolio = pd.DataFrame(st.session_state.portfolio_data)
         
-        # Format the dataframe for display
+        # Format the dataframe for display with clickable tickers
         df_display = df_portfolio.copy()
-        df_display.columns = ['Ticker', 'Regime', 'Signal', 'Price', 'Trades', 'Action', 'Return %']
+        
+        # Create clickable ticker links
+        def create_ticker_link(ticker):
+            return f'<a href="?stock={ticker}" style="color: #1f77b4; font-weight: bold; text-decoration: none;">{ticker}</a>'
+        
+        df_display['Ticker'] = df_display['ticker'].apply(create_ticker_link)
+        df_display = df_display.drop('ticker', axis=1)
+        
+        df_display.columns = ['Regime', 'Signal', 'Price', 'Trades', 'Action', 'Return %', 'Ticker']
+        df_display = df_display[['Ticker', 'Regime', 'Signal', 'Price', 'Trades', 'Action', 'Return %']]
+        
         df_display['Price'] = df_display['Price'].apply(lambda x: f"${x:.2f}")
         df_display['Return %'] = df_display['Return %'].apply(lambda x: f"{x:.2f}%")
         
@@ -474,8 +484,25 @@ def portfolio_page():
         st.dataframe(
             df_display.style.apply(highlight_action, axis=1),
             use_container_width=True,
-            hide_index=True
+            hide_index=True,
+            unsafe_allow_html=True
         )
+        
+        # Interactive buttons for each ticker
+        st.markdown("---")
+        st.subheader("🔍 Quick Analysis")
+        
+        # Create columns for ticker buttons
+        cols = st.columns(min(8, len(st.session_state.portfolio_data)))
+        for idx, result in enumerate(st.session_state.portfolio_data):
+            ticker = result['ticker']
+            with cols[idx % len(cols)]:
+                if st.button(f"📊 {ticker}", key=f"analyze_{ticker}"):
+                    # Store selected ticker and enable auto-refresh
+                    st.session_state.selected_ticker = ticker
+                    st.session_state.auto_refresh = True
+                    st.session_state.selected_page = "🔍 Single Stock Analysis"
+                    st.rerun()
         
         # Summary stats
         st.markdown("---")
@@ -504,12 +531,21 @@ def main():
     st.title("📈 Regime-Based Trading App")
     st.markdown("Professional HMM-based trading system with multi-factor confirmation")
     
+    # Initialize navigation state if needed
+    if 'selected_page' not in st.session_state:
+        st.session_state.selected_page = "📊 Portfolio Watchlist"
+    if 'selected_ticker' not in st.session_state:
+        st.session_state.selected_ticker = None
+    
     # Page selection
     page = st.sidebar.radio(
         "Navigation",
         ["📊 Portfolio Watchlist", "🔍 Single Stock Analysis"],
-        index=0
+        index=0 if st.session_state.selected_page == "📊 Portfolio Watchlist" else 1
     )
+    
+    # Update selected page in session state
+    st.session_state.selected_page = page
     
     st.sidebar.markdown("---")
     
@@ -548,33 +584,38 @@ def main():
             st.sidebar.info(f"⏱️ Refreshing now...")
     
     # Ticker selection with custom input option
-    ticker_input_method = st.sidebar.radio(
-        "Ticker Selection",
-        ["📋 Select from list", "✍️ Enter custom"],
-        horizontal=True
-    )
-    
-    if ticker_input_method == "📋 Select from list":
-        selected_ticker = st.sidebar.selectbox(
-            "Select Ticker",
-            [
-                'AAPL', 'AFJK',
-                'ABVX', 'AAP', 'ADMA', 'AGEN', 'CELC', 'CNC', 'CONI', 'DAVE', 'FIVN', 'GLUE',
-                'LUMN', 'LWAY', 'MGPI', 'NNNN', 'NVCR', 'NVDL','OIS', 'ODD', 'PEGA', 'QURE', 'RXO',
-                'SBUX', 'SERV', 'SOGP', 'TIL', 'TREE','TSLA', 'UPST', 'WLDN', 'ZEPP'
-            ]  
-        )
+    # If selected from portfolio, use that; otherwise use sidebar selection
+    if st.session_state.selected_ticker:
+        selected_ticker = st.session_state.selected_ticker
+        st.sidebar.info(f"📊 Analyzing: **{selected_ticker}**")
     else:
-        selected_ticker = st.sidebar.text_input(
-            "Enter Ticker Symbol",
-            value="AAPL",
-            help="Enter any valid stock ticker symbol (e.g., AAPL, TSLA, MSFT)",
-            max_chars=10
-        ).upper().strip()
+        ticker_input_method = st.sidebar.radio(
+            "Ticker Selection",
+            ["📋 Select from list", "✍️ Enter custom"],
+            horizontal=True
+        )
         
-        if not selected_ticker:
-            st.sidebar.warning("⚠️ Please enter a ticker symbol")
-            return
+        if ticker_input_method == "📋 Select from list":
+            selected_ticker = st.sidebar.selectbox(
+                "Select Ticker",
+                [
+                    'AAPL', 'AFJK',
+                    'ABVX', 'AAP', 'ADMA', 'AGEN', 'CELC', 'CNC', 'CONI', 'DAVE', 'FIVN', 'GLUE',
+                    'LUMN', 'LWAY', 'MGPI', 'NNNN', 'NVCR', 'NVDL','OIS', 'ODD', 'PEGA', 'QURE', 'RXO',
+                    'SBUX', 'SERV', 'SOGP', 'TIL', 'TREE','TSLA', 'UPST', 'WLDN', 'ZEPP'
+                ]  
+            )
+        else:
+            selected_ticker = st.sidebar.text_input(
+                "Enter Ticker Symbol",
+                value="AAPL",
+                help="Enter any valid stock ticker symbol (e.g., AAPL, TSLA, MSFT)",
+                max_chars=10
+            ).upper().strip()
+            
+            if not selected_ticker:
+                st.sidebar.warning("⚠️ Please enter a ticker symbol")
+                return
     
     days_history = st.sidebar.slider(
         "Historical Data (days)",
@@ -619,6 +660,11 @@ def main():
     if should_run:
         # Update last run time
         st.session_state.last_run_time = datetime.now()
+        
+        # Clear selected_ticker after using it once from portfolio
+        ticker_from_portfolio = st.session_state.selected_ticker is not None
+        if ticker_from_portfolio:
+            st.session_state.selected_ticker = None
         
         with st.spinner(f"Loading data for {selected_ticker}..."):
             # Load data
