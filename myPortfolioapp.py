@@ -456,19 +456,9 @@ def portfolio_page():
     if 'portfolio_data' in st.session_state and st.session_state.portfolio_data:
         df_portfolio = pd.DataFrame(st.session_state.portfolio_data)
         
-        # Format the dataframe for display with clickable tickers
+        # Format the dataframe for display
         df_display = df_portfolio.copy()
-        
-        # Create clickable ticker links
-        def create_ticker_link(ticker):
-            return f'<a href="?stock={ticker}" style="color: #1f77b4; font-weight: bold; text-decoration: none;">{ticker}</a>'
-        
-        df_display['Ticker'] = df_display['ticker'].apply(create_ticker_link)
-        df_display = df_display.drop('ticker', axis=1)
-        
-        df_display.columns = ['Regime', 'Signal', 'Price', 'Trades', 'Action', 'Return %', 'Ticker']
-        df_display = df_display[['Ticker', 'Regime', 'Signal', 'Price', 'Trades', 'Action', 'Return %']]
-        
+        df_display.columns = ['Ticker', 'Regime', 'Signal', 'Price', 'Trades', 'Action', 'Return %']
         df_display['Price'] = df_display['Price'].apply(lambda x: f"${x:.2f}")
         df_display['Return %'] = df_display['Return %'].apply(lambda x: f"{x:.2f}%")
         
@@ -484,8 +474,7 @@ def portfolio_page():
         st.dataframe(
             df_display.style.apply(highlight_action, axis=1),
             use_container_width=True,
-            hide_index=True,
-            unsafe_allow_html=True
+            hide_index=True
         )
         
         # Interactive buttons for each ticker
