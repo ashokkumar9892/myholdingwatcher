@@ -11,6 +11,7 @@ from plotly.subplots import make_subplots
 import yfinance as yf
 from datetime import datetime, timedelta
 import warnings
+import time
 
 from data_loader import fetch_hourly_data, calculate_features, get_training_features
 from indicators import add_all_indicators
@@ -322,8 +323,33 @@ def main():
     st.title("📈 Regime-Based Trading App")
     st.markdown("Professional HMM-based trading system with multi-factor confirmation")
     
+    # Initialize session state for auto-refresh
+    if 'last_run_time' not in st.session_state:
+        st.session_state.last_run_time = None
+    if 'auto_refresh' not in st.session_state:
+        st.session_state.auto_refresh = False
+    
     # Sidebar for controls
     st.sidebar.header("Configuration")
+    
+    # Auto-refresh toggle
+    auto_refresh = st.sidebar.checkbox(
+        "🔄 Auto-refresh every 1 hour",
+        value=st.session_state.auto_refresh,
+        help="Automatically run backtest every hour"
+    )
+    st.session_state.auto_refresh = auto_refresh
+    
+    # Show last update time and countdown
+    if st.session_state.last_run_time:
+        time_since_last = datetime.now() - st.session_state.last_run_time
+        minutes_since = int(time_since_last.total_seconds() / 60)
+        next_refresh_in = 60 - minutes_since
+        
+        if next_refresh_in > 0:
+            st.sidebar.info(f"⏱️ Next refresh in: {next_refresh_in} minutes")
+        else:
+            st.sidebar.info(f"⏱️ Refreshing now...")
     
     selected_ticker = st.sidebar.selectbox(
         "Select Ticker",
@@ -364,7 +390,21 @@ def main():
         key="backtest_button"
     )
     
-    if run_backtest:
+    # Auto-refresh logic: trigger backtest if enabled and 1 hour has passed
+    should_run = run_backtest
+    if auto_refresh and st.session_state.last_run_time:
+        time_since_last = datetime.now() - st.session_state.last_run_time
+        if time_since_last >= timedelta(hours=1):
+            should_run = True
+            st.sidebar.success("🔄 Auto-refreshing...")
+    elif auto_refresh and not st.session_state.last_run_time:
+        # First time with auto-refresh enabled
+        should_run = True
+    
+    if should_run:
+        # Update last run time
+        st.session_state.last_run_time = datetime.now()
+        
         with st.spinner(f"Loading data for {selected_ticker}..."):
             # Load data
             data = load_ticker_data(selected_ticker, days=days_history)
@@ -546,6 +586,11 @@ def main():
         - Blue chips: AAPL, MSFT, GOOGL, TSLA, NVDA
         - Micro-caps: ABVX, AAP, ADMA, AGEN, CELC, and many more...
         """)
+    
+    # Auto-refresh mechanism: continuously poll to check if refresh is needed
+    if auto_refresh:
+        time.sleep(5)  # Check every 5 seconds
+        st.rerun()
 
 
 if __name__ == "__main__":
