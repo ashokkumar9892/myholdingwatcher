@@ -317,12 +317,203 @@ def create_metrics_chart(results):
         )
 
 
+def get_quick_analysis(ticker, days=730):
+    """
+    Quick analysis for a single ticker (for portfolio view)
+    Returns: dict with analysis results or None if failed
+    """
+    try:
+        # Load data
+        data = fetch_hourly_data(ticker, days=days)
+        if data is None or len(data) < 100:
+            return None
+        
+        # Calculate features and indicators
+        df = calculate_features(data).copy()
+        df = add_all_indicators(df)
+        
+        # Train HMM
+        regime_detector = RegimeDetector(n_components=7)
+        train_features = get_training_features(df)
+        
+        if not regime_detector.train(train_features):
+            return None
+        
+        # Predict regimes
+        regimes = regime_detector.get_all_regime_timeseries(train_features)
+        df['Regime'] = regimes
+        
+        # Run backtest
+        backtester = RegimeBasedBacktester(initial_capital=2000, leverage=2.5)
+        results = backtester.run_backtest(data, ticker=ticker)
+        
+        if results is None:
+            return None
+        
+        # Get current status
+        current_regime = str(df['Regime'].iloc[-1]).strip()
+        current_price = float(df['Close'].iloc[-1])
+        num_trades = results['num_trades']
+        
+        # Determine signal
+        signal = "CASH"
+        recommendation = "HOLD"
+        
+        if current_regime == 'Bull':
+            signal = "LONG"
+            recommendation = "BUY"
+        elif current_regime == 'Bear':
+            signal = "SHORT"
+            recommendation = "SELL"
+        
+        return {
+            'ticker': ticker,
+            'regime': current_regime,
+            'signal': signal,
+            'price': current_price,
+            'num_trades': num_trades,
+            'recommendation': recommendation,
+            'total_return': results['total_return_pct']
+        }
+    except Exception as e:
+        return None
+
+
+def portfolio_page():
+    """Portfolio watchlist page showing multiple tickers"""
+    st.title("📊 Portfolio Watchlist")
+    st.markdown("Track multiple stocks with regime analysis")
+    
+    # Initialize portfolio in session state
+    if 'portfolio_tickers' not in st.session_state:
+        st.session_state.portfolio_tickers = ['AAPL', 'TSLA', 'NVDA', 'MSFT', 'AMD']
+    
+    # Sidebar for managing portfolio
+    st.sidebar.header("Manage Portfolio")
+    
+    # Add ticker to portfolio
+    new_ticker = st.sidebar.text_input(
+        "Add Ticker",
+        placeholder="Enter ticker symbol",
+        max_chars=10
+    ).upper().strip()
+    
+    if st.sidebar.button("➕ Add to Portfolio"):
+        if new_ticker and new_ticker not in st.session_state.portfolio_tickers:
+            st.session_state.portfolio_tickers.append(new_ticker)
+            st.sidebar.success(f"Added {new_ticker}!")
+        elif new_ticker in st.session_state.portfolio_tickers:
+            st.sidebar.warning(f"{new_ticker} already in portfolio")
+    
+    # Remove ticker
+    if st.session_state.portfolio_tickers:
+        ticker_to_remove = st.sidebar.selectbox(
+            "Remove Ticker",
+            st.session_state.portfolio_tickers
+        )
+        if st.sidebar.button("➖ Remove"):
+            st.session_state.portfolio_tickers.remove(ticker_to_remove)
+            st.sidebar.success(f"Removed {ticker_to_remove}!")
+    
+    # Refresh button
+    refresh_portfolio = st.sidebar.button("🔄 Refresh All")
+    
+    # Display current portfolio
+    st.sidebar.markdown(f"**Portfolio ({len(st.session_state.portfolio_tickers)} stocks)**")
+    st.sidebar.write(", ".join(st.session_state.portfolio_tickers))
+    
+    # Main content
+    if not st.session_state.portfolio_tickers:
+        st.info("👆 Add tickers to your portfolio using the sidebar")
+        return
+    
+    if refresh_portfolio or 'portfolio_data' not in st.session_state:
+        portfolio_results = []
+        
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        
+        for idx, ticker in enumerate(st.session_state.portfolio_tickers):
+            status_text.text(f"Analyzing {ticker}... ({idx+1}/{len(st.session_state.portfolio_tickers)})")
+            
+            result = get_quick_analysis(ticker)
+            if result:
+                portfolio_results.append(result)
+            
+            progress_bar.progress((idx + 1) / len(st.session_state.portfolio_tickers))
+        
+        status_text.empty()
+        progress_bar.empty()
+        
+        st.session_state.portfolio_data = portfolio_results
+    
+    # Display results table
+    if 'portfolio_data' in st.session_state and st.session_state.portfolio_data:
+        df_portfolio = pd.DataFrame(st.session_state.portfolio_data)
+        
+        # Format the dataframe for display
+        df_display = df_portfolio.copy()
+        df_display.columns = ['Ticker', 'Regime', 'Signal', 'Price', 'Trades', 'Action', 'Return %']
+        df_display['Price'] = df_display['Price'].apply(lambda x: f"${x:.2f}")
+        df_display['Return %'] = df_display['Return %'].apply(lambda x: f"{x:.2f}%")
+        
+        # Color code the action column
+        def highlight_action(row):
+            if row['Action'] == 'BUY':
+                return ['background-color: #d4edda'] * len(row)
+            elif row['Action'] == 'SELL':
+                return ['background-color: #f8d7da'] * len(row)
+            else:
+                return ['background-color: #fff3cd'] * len(row)
+        
+        st.dataframe(
+            df_display.style.apply(highlight_action, axis=1),
+            use_container_width=True,
+            hide_index=True
+        )
+        
+        # Summary stats
+        st.markdown("---")
+        col1, col2, col3, col4 = st.columns(4)
+        
+        buy_signals = len([r for r in st.session_state.portfolio_data if r['recommendation'] == 'BUY'])
+        sell_signals = len([r for r in st.session_state.portfolio_data if r['recommendation'] == 'SELL'])
+        hold_signals = len([r for r in st.session_state.portfolio_data if r['recommendation'] == 'HOLD'])
+        avg_return = np.mean([r['total_return'] for r in st.session_state.portfolio_data])
+        
+        with col1:
+            st.metric("🟢 BUY Signals", buy_signals)
+        with col2:
+            st.metric("🔴 SELL Signals", sell_signals)
+        with col3:
+            st.metric("⚪ HOLD Signals", hold_signals)
+        with col4:
+            st.metric("📊 Avg Return", f"{avg_return:.2f}%")
+    else:
+        st.warning("No data available. Click 'Refresh All' to analyze your portfolio.")
+
+
 def main():
     """Main Streamlit app"""
     
     st.title("📈 Regime-Based Trading App")
     st.markdown("Professional HMM-based trading system with multi-factor confirmation")
     
+    # Page selection
+    page = st.sidebar.radio(
+        "Navigation",
+        ["📊 Portfolio Watchlist", "🔍 Single Stock Analysis"],
+        index=0
+    )
+    
+    st.sidebar.markdown("---")
+    
+    # Route to appropriate page
+    if page == "📊 Portfolio Watchlist":
+        portfolio_page()
+        return
+    
+    # Continue with single stock analysis page
     # Initialize session state for auto-refresh
     if 'last_run_time' not in st.session_state:
         st.session_state.last_run_time = None
