@@ -4,7 +4,27 @@ Centralized configuration for the Regime-Based Trading App
 """
 
 import json
+import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+# ============================================================================
+# API CONFIGURATION
+# ============================================================================
+
+# Polygon.io API Configuration
+POLYGON_API_KEY = os.getenv('POLYGON_API_KEY', '')
+
+if not POLYGON_API_KEY:
+    import warnings
+    warnings.warn(
+        "POLYGON_API_KEY not found in environment variables. "
+        "Please create a .env file with your Polygon.io API key. "
+        "Get your free API key at: https://polygon.io/"
+    )
 
 # ============================================================================
 # STRATEGY CONFIGURATION

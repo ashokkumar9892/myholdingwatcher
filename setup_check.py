@@ -49,7 +49,8 @@ def check_dependencies():
         ('streamlit', 'streamlit'),
         ('pandas', 'pandas'),
         ('numpy', 'numpy'),
-        ('yfinance', 'yfinance'),
+        ('polygon-api-client', 'polygon'),
+        ('python-dotenv', 'dotenv'),
         ('plotly', 'plotly'),
         ('hmmlearn', 'hmmlearn'),
         ('scikit-learn', 'sklearn'),
@@ -93,6 +94,62 @@ def check_modules():
     return all_ok
 
 
+def check_polygon_api():
+    """Check if Polygon.io API key is configured"""
+    print_header("Checking Polygon.io API Configuration")
+    
+    import os
+    from dotenv import load_dotenv
+    
+    # Load .env file
+    load_dotenv()
+    
+    # Check if .env file exists
+    env_file = Path('.env')
+    if not env_file.exists():
+        print("⚠️  .env file not found")
+        print("   → Copy .env.example to .env and add your API key")
+        print("   → Get your free key at: https://polygon.io/")
+        return False
+    else:
+        print("✅ .env file found")
+    
+    # Check if API key is set
+    api_key = os.getenv('POLYGON_API_KEY', '')
+    if not api_key or api_key == 'your_polygon_api_key_here':
+        print("⚠️  POLYGON_API_KEY not configured")
+        print("   → Edit .env and add your actual API key")
+        print("   → Get your free key at: https://polygon.io/")
+        return False
+    else:
+        # Mask the API key for security
+        masked_key = api_key[:8] + '...' + api_key[-4:] if len(api_key) > 12 else '***'
+        print(f"✅ POLYGON_API_KEY found: {masked_key}")
+    
+    # Test API connection
+    try:
+        from polygon import RESTClient
+        print("\nTesting Polygon.io connection...")
+        client = RESTClient(api_key=api_key)
+        
+        # Try to fetch a simple quote
+        list(client.list_aggs(
+            ticker="AAPL",
+            multiplier=1,
+            timespan="day",
+            from_="2024-01-01",
+            to="2024-01-02",
+            limit=1
+        ))
+        print("✅ Successfully connected to Polygon.io API")
+        return True
+    except Exception as e:
+        print(f"❌ Failed to connect to Polygon.io: {str(e)[:100]}")
+        print("   → Check your API key")
+        print("   → Verify your internet connection")
+        return False
+
+
 def check_files():
     """Check if all required files exist"""
     print_header("Checking Project Files")
@@ -105,7 +162,8 @@ def check_files():
         'myPortfolioapp.py',
         'config.py',
         'requirements.txt',
-        'README.md'
+        'README.md',
+        '.env.example'
     ]
     
     current_dir = Path('.')
@@ -127,21 +185,29 @@ def print_next_steps():
     print_header("Next Steps")
     
     print("""
-1. Verify all dependencies are installed:
+1. If dependencies are missing:
    pip install -r requirements.txt
 
-2. (Optional) Install TA-Lib for better performance:
+2. If Polygon API key is not configured:
+   a) Copy .env.example to .env
+   b) Get your FREE API key at: https://polygon.io/
+   c) Edit .env and add your key
+   d) See POLYGON_SETUP.md for detailed instructions
+
+3. (Optional) Install TA-Lib for better performance:
    - Windows: pip install TA-Lib
    - macOS: brew install ta-lib && pip install TA-Lib
    - Linux: See README.md for installation instructions
 
-3. Run the Streamlit app:
+4. Run the Streamlit app:
    streamlit run myPortfolioapp.py
 
-4. The dashboard will open in your browser at:
+5. The dashboard will open in your browser at:
    http://localhost:8501
 
-5. Select a ticker and click "Run Backtest" to test the strategy
+6. Select a ticker and click "Run Backtest" to test the strategy
+
+📖 Quick reference: See QUICK_START.txt
     """)
 
 
@@ -156,6 +222,9 @@ def main():
     
     # Check dependencies
     results.append(("Dependencies", check_dependencies()))
+    
+    # Check Polygon API
+    results.append(("Polygon.io API", check_polygon_api()))
     
     # Check files
     results.append(("Project Files", check_files()))

@@ -1,0 +1,86 @@
+════════════════════════════════════════════════════════════════
+   QUICK START GUIDE - Regime-Based Trading App
+════════════════════════════════════════════════════════════════
+
+⚠️  IMPORTANT: API Key Required!
+This app now uses Polygon.io for better data quality.
+
+═══════════════════════════════════════════════════════════════
+STEP 1: Get Your FREE Polygon.io API Key
+═══════════════════════════════════════════════════════════════
+
+1. Go to: https://polygon.io/
+2. Click "Sign Up" (it's FREE!)
+3. Verify your email
+4. Copy your API key from the dashboard
+
+═══════════════════════════════════════════════════════════════
+STEP 2: Configure Your API Key
+═══════════════════════════════════════════════════════════════
+
+Windows PowerShell:
+    Copy-Item .env.example .env
+    notepad .env
+
+Mac/Linux Terminal:
+    cp .env.example .env
+    nano .env
+
+→ Replace "your_polygon_api_key_here" with your actual key
+→ Save and close
+
+═══════════════════════════════════════════════════════════════
+STEP 3: Install Dependencies
+═══════════════════════════════════════════════════════════════
+
+    pip install -r requirements.txt
+
+═══════════════════════════════════════════════════════════════
+STEP 4: Run the App
+═══════════════════════════════════════════════════════════════
+
+    streamlit run myPortfolioapp.py
+
+The app will open in your browser at http://localhost:8501
+
+═══════════════════════════════════════════════════════════════
+TROUBLESHOOTING
+═══════════════════════════════════════════════════════════════
+
+❌ "API key not found"
+   → Make sure .env file is in the project root folder
+   → Check that you saved the file after editing
+   → Restart the Streamlit app
+
+❌ "No data found"  
+   → Verify your API key is correct
+   → Check your internet connection
+   → Try a different ticker (AAPL, TSLA, etc.)
+
+❌ "Too many requests"
+   → Free tier limit: 5 calls/minute
+   → Wait 1 minute and try again
+   → Use Single Stock Analysis instead of Portfolio
+
+═══════════════════════════════════════════════════════════════
+NEED HELP?
+═══════════════════════════════════════════════════════════════
+
+📖 Full Setup Guide: POLYGON_SETUP.md
+📖 Documentation: README.md
+🌐 Polygon.io Docs: https://polygon.io/docs
+💬 Polygon Support: support@polygon.io
+
+═══════════════════════════════════════════════════════════════
+FREE TIER DETAILS
+═══════════════════════════════════════════════════════════════
+
+✅ 5 API calls per minute
+✅ 15-minute delayed stock data
+✅ Up to 2 years of historical data
+✅ Perfect for backtesting!
+
+💡 TIP: Use "Single Stock Analysis" for faster results
+    Portfolio analysis of 30+ stocks takes ~6-7 minutes
+
+═══════════════════════════════════════════════════════════════

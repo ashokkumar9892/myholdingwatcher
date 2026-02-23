@@ -4,11 +4,11 @@ Interactive dashboard for visualizing and analyzing trading signals and performa
 """
 
 import streamlit as st
+from streamlit_autorefresh import st_autorefresh
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-import yfinance as yf
 from datetime import datetime, timedelta
 import warnings
 import time
@@ -517,6 +517,9 @@ def portfolio_page():
 def main():
     """Main Streamlit app"""
     
+    # Auto-refresh every 30 minutes (1800000 milliseconds)
+    st_autorefresh(interval=1800000, key="data_refresh")
+    
     st.title("📈 Regime-Based Trading App")
     st.markdown("Professional HMM-based trading system with multi-factor confirmation")
     
@@ -544,33 +547,11 @@ def main():
         return
     
     # Continue with single stock analysis page
-    # Initialize session state for auto-refresh
-    if 'last_run_time' not in st.session_state:
-        st.session_state.last_run_time = None
-    if 'auto_refresh' not in st.session_state:
-        st.session_state.auto_refresh = False
-    
     # Sidebar for controls
     st.sidebar.header("Configuration")
     
-    # Auto-refresh toggle
-    auto_refresh = st.sidebar.checkbox(
-        "🔄 Auto-refresh every 1 hour",
-        value=st.session_state.auto_refresh,
-        help="Automatically run backtest every hour"
-    )
-    st.session_state.auto_refresh = auto_refresh
-    
-    # Show last update time and countdown
-    if st.session_state.last_run_time:
-        time_since_last = datetime.now() - st.session_state.last_run_time
-        minutes_since = int(time_since_last.total_seconds() / 60)
-        next_refresh_in = 60 - minutes_since
-        
-        if next_refresh_in > 0:
-            st.sidebar.info(f"⏱️ Next refresh in: {next_refresh_in} minutes")
-        else:
-            st.sidebar.info(f"⏱️ Refreshing now...")
+    # Show auto-refresh status
+    st.sidebar.info("🔄 Page auto-refreshes every 30 minutes")
     
     # Ticker selection with custom input option
     # If selected from portfolio, use that; otherwise use sidebar selection
@@ -635,18 +616,7 @@ def main():
         key="backtest_button"
     )
     
-    # Auto-refresh logic: trigger backtest if enabled and 1 hour has passed
-    should_run = run_backtest
-    if auto_refresh and st.session_state.last_run_time:
-        time_since_last = datetime.now() - st.session_state.last_run_time
-        if time_since_last >= timedelta(hours=1):
-            should_run = True
-            st.sidebar.success("🔄 Auto-refreshing...")
-    elif auto_refresh and not st.session_state.last_run_time:
-        # First time with auto-refresh enabled
-        should_run = True
-    
-    if should_run:
+    if run_backtest:
         # Update last run time
         st.session_state.last_run_time = datetime.now()
         
@@ -836,11 +806,6 @@ def main():
         - Blue chips: AAPL, MSFT, GOOGL, TSLA, NVDA
         - Micro-caps: ABVX, AAP, ADMA, AGEN, CELC, and many more...
         """)
-    
-    # Auto-refresh mechanism: continuously poll to check if refresh is needed
-    if auto_refresh:
-        time.sleep(5)  # Check every 5 seconds
-        st.rerun()
 
 
 if __name__ == "__main__":

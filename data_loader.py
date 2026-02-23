@@ -1,13 +1,14 @@
 """
 Data Loader Module
-Fetches hourly OHLCV data for specified stocks using yfinance
+Fetches hourly OHLCV data for specified stocks using Polygon.io API
 """
 
-import yfinance as yf
+from polygon import RESTClient
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 import warnings
+from config import POLYGON_API_KEY
 
 warnings.filterwarnings('ignore')
 
@@ -20,7 +21,7 @@ STOCK_LIST = [
 
 def fetch_hourly_data(ticker, days=730):
     """
-    Fetch hourly OHLCV data for a given ticker
+    Fetch hourly OHLCV data for a given ticker using Polygon.io
     
     Args:
         ticker (str): Stock ticker symbol
@@ -30,36 +31,70 @@ def fetch_hourly_data(ticker, days=730):
         pd.DataFrame: OHLCV data with Open, High, Low, Close, Volume columns
     """
     try:
+        if not POLYGON_API_KEY:
+            raise ValueError(
+                "Polygon.io API key not found. Please set POLYGON_API_KEY in your .env file. "
+                "Get your free API key at: https://polygon.io/"
+            )
+        
+        # Initialize Polygon client
+        client = RESTClient(api_key=POLYGON_API_KEY)
+        
+        # Calculate date range
         end_date = datetime.now()
         start_date = end_date - timedelta(days=days)
         
-        data = yf.download(
-            ticker,
-            start=start_date,
-            end=end_date,
-            interval='1h',
-            progress=False,
-            threads=True
-        )
+        # Format dates for Polygon API (YYYY-MM-DD)
+        start_str = start_date.strftime('%Y-%m-%d')
+        end_str = end_date.strftime('%Y-%m-%d')
         
-        if data.empty:
+        # Fetch hourly aggregates
+        # timespan='hour', multiplier=1
+        aggs = []
+        for agg in client.list_aggs(
+            ticker=ticker,
+            multiplier=1,
+            timespan='hour',
+            from_=start_str,
+            to=end_str,
+            limit=50000  # Max limit
+        ):
+            aggs.append(agg)
+        
+        if not aggs:
             print(f"Warning: No data found for {ticker}")
             return None
         
+        # Convert to DataFrame
+        data_list = []
+        for agg in aggs:
+            data_list.append({
+                'timestamp': pd.to_datetime(agg.timestamp, unit='ms'),
+                'Open': agg.open,
+                'High': agg.high,
+                'Low': agg.low,
+                'Close': agg.close,
+                'Volume': agg.volume
+            })
+        
+        df = pd.DataFrame(data_list)
+        df.set_index('timestamp', inplace=True)
+        df.sort_index(inplace=True)
+        
         # Ensure required columns exist
         required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
-        if not all(col in data.columns for col in required_cols):
+        if not all(col in df.columns for col in required_cols):
             print(f"Warning: Missing required columns for {ticker}")
             return None
         
         # Remove any NaN values
-        data = data.dropna()
+        df = df.dropna()
         
-        if len(data) < 100:
-            print(f"Warning: Insufficient data for {ticker} ({len(data)} bars)")
+        if len(df) < 100:
+            print(f"Warning: Insufficient data for {ticker} ({len(df)} bars)")
             return None
         
-        return data
+        return df
     
     except Exception as e:
         print(f"Error fetching data for {ticker}: {str(e)}")

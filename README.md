@@ -45,7 +45,7 @@ A professional trading platform built with Python, leveraging Hidden Markov Mode
 ### Modules
 
 1. **data_loader.py**
-   - Fetches hourly OHLCV data via yfinance
+   - Fetches hourly OHLCV data via Polygon.io API
    - Loads 730 days of historical data
    - Supports 28 pre-configured stocks
    - Calculates HMM training features
@@ -129,7 +129,28 @@ A professional trading platform built with Python, leveraging Hidden Markov Mode
    pip install -r requirements.txt
    ```
 
-4. **(Optional) Install TA-Lib for better performance**
+4. **Configure Polygon.io API Key** ⚠️ **REQUIRED**
+   
+   This app now uses Polygon.io for better data quality and reliability.
+   
+   **Quick Setup:**
+   1. Get your FREE API key at [polygon.io](https://polygon.io/) (takes 2 minutes)
+   2. Copy `.env.example` to `.env`:
+      ```bash
+      # Windows
+      copy .env.example .env
+      
+      # Mac/Linux
+      cp .env.example .env
+      ```
+   3. Open `.env` and add your API key:
+      ```
+      POLYGON_API_KEY=your_actual_api_key_here
+      ```
+   
+   📖 **Detailed instructions**: See [POLYGON_SETUP.md](POLYGON_SETUP.md)
+
+5. **(Optional) Install TA-Lib for better performance**
    
    **Windows:**
    ```bash
